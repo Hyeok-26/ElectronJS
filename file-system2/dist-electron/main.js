@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, Menu } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -44,11 +44,19 @@ app.whenReady().then(() => {
   if (!app.isPackaged) {
     win == null ? void 0 : win.webContents.openDevTools();
   }
-  ipcMain.on("saveMemo", (_event, content) => {
+  ipcMain.on("saveMemo", async (_event, content) => {
     console.log(__dirname);
     const filePath = path.join(__dirname, "../file/myMemo.txt");
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, content, "utf-8");
+    const result = await dialog.showMessageBox(win, {
+      type: "info",
+      buttons: ["확인", "취소"],
+      defaultId: 0,
+      message: "저장했습니다",
+      detail: "file 폴더에 문자열이 저장되었습니다."
+    });
+    console.log(result.response);
   });
   ipcMain.on("loadMemo", (event) => {
     const filePath = path.join(__dirname, "../file/myMemo.txt");
@@ -106,6 +114,7 @@ app.whenReady().then(() => {
           label: "Save As",
           click: async () => {
             const { filePath } = await dialog.showSaveDialog({});
+            if (!filePath) return;
             win.webContents.send("saveContent", { filePath });
           }
         }

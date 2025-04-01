@@ -79,13 +79,22 @@ app.whenReady().then(()=>{
   }
 
   //ipcRenderer.send("saveMemo", 데이터) 를 호출하면서 아래의 함수가 호출된다.
-  ipcMain.on("saveMemo", (_event, content:string)=>{
+  ipcMain.on("saveMemo", async (_event, content:string)=>{
     console.log(__dirname);
     const filePath = path.join(__dirname,"../file/myMemo.txt");
     //recursive: true 는 해당 경로의 폴더가 존재하지 않으면 만들어준다
     fs.mkdirSync(path.dirname(filePath), {recursive: true});
     //파일에 문자열 출력하기
     fs.writeFileSync(filePath, content, "utf-8");
+    //알림 띄우시
+    const result = await dialog.showMessageBox(win!, {
+      type:"info",
+      buttons:["확인","취소"],
+      defaultId:0,
+      message:"저장했습니다",
+      detail:"file 폴더에 문자열이 저장되었습니다."
+    });
+    console.log(result.response);
   });
 
   ipcMain.on("loadMemo", (event)=>{
@@ -160,6 +169,8 @@ app.whenReady().then(()=>{
           click:async()=>{
             //원하는 위치에 원하는 파일명으로 저장하기
             const {filePath} = await dialog.showSaveDialog({});
+            //파일을 선택하지 않았거나 취소했을 떄
+            if(!filePath)return;
             win!.webContents.send("saveContent",{filePath});
           }
         }
