@@ -7,5 +7,6 @@ contextBridge.exposeInMainWorld('api', {
   getPosts : ()=>ipcRenderer.invoke("get-posts"),
   //main proccess 에 add-post 요청을 하면서 매개변수에 전달된 추가할 글정보를 전달한다
   addPost : (newPost: Post)=>ipcRenderer.invoke("add-post", newPost) ,
-  deletePost : (postId:number)=>ipcRenderer.invoke("delete-post", postId)
+  deletePost : (postId:number)=>ipcRenderer.invoke("delete-post", postId),
+  updatePost : (post:Post)=>ipcRenderer.invoke("update-post", post)
 })

@@ -16712,16 +16712,39 @@ const {
   getAdapter,
   mergeConfig
 } = axios;
+const api = axios.create({
+  baseURL: "http://localhost:9000"
+  // 기본 URL 설정
+});
+api.interceptors.request.use(
+  (config) => {
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error("API Error:", error);
+    return Promise.reject(error);
+  }
+);
 ipcMain.handle("get-posts", async () => {
-  const response = await axios.get("http://localhost:9000/v1/posts");
+  const response = await api.get("/v1/posts");
   return response.data;
 });
 ipcMain.handle("add-post", async (_event, newPost) => {
-  const response = await axios.post("http://localhost:9000/v1/posts", newPost);
+  const response = await api.post("/v1/posts", newPost);
   return response.data;
 });
 ipcMain.handle("delete-post", async (_event, postId) => {
-  const response = await axios.delete(`http://localhost:9000/v1/posts/${postId}`);
+  const response = await api.delete(`/v1/posts/${postId}`);
+  return response.data;
+});
+ipcMain.handle("update-post", async (_event, post) => {
+  const response = await api.put(`/v1/posts/${post.id}`, post);
   return response.data;
 });
 createRequire(import.meta.url);
