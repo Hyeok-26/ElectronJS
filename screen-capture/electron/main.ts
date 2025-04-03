@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, dialog, globalShortcut } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -66,9 +66,29 @@ app.on('activate', () => {
   }
 })
 
+//app 이 초기화 되고 준비가 완료 되었을 때 호출되는 함수 등록
 app.whenReady().then(()=>{
+  //BrowerWindow 를 만들고
   createWindow();
-  if(!app.isPackaged){
+})
+
+//BrowserWindow 의 focus 가 왔을 때 실행할 함수
+app.on("browser-window-focus",()=>{
+  //control+t 를 누르면 개발 tool 이 열리도록 한다
+  globalShortcut.register("Control+t", ()=>{
     win?.webContents.openDevTools()
-  }
+  });
+
+  //Control+s 를 누르면 파일 시스템에 저장이 되도록 한다.
+  globalShortcut.register("Control+s", async()=>{
+    win?.webContents.send("get-image");
+  })
+});
+//BrowserWindow 의 focus 를 잃었을 때 실행할 함수
+app.on("browser-window-blur",()=>{
+  globalShortcut.unregisterAll();
+});
+//앱 종료시
+app.on("will-quit",()=>{
+  globalShortcut.unregisterAll();
 })
