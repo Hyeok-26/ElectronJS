@@ -1,4 +1,4 @@
-import { ipcMain, screen, desktopCapturer, dialog, app, BrowserWindow, globalShortcut } from "electron";
+import { ipcMain, screen, desktopCapturer, clipboard, dialog, app, BrowserWindow, globalShortcut } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -14,6 +14,7 @@ ipcMain.handle("screen-capture", async () => {
     const screen2 = sources[0];
     const thumbnail = screen2.thumbnail;
     const dataUrl = thumbnail.toDataURL();
+    clipboard.writeImage(thumbnail);
     return dataUrl;
   }
   throw new Error("Error!");
@@ -43,6 +44,33 @@ ipcMain.on("save-image", async (_event, imageData) => {
     });
   }
 });
+let mainWindow$1 = null;
+let overlayWindow$1 = null;
+function setBrowserWindow(main, overlay) {
+  mainWindow$1 = main;
+  overlayWindow$1 = overlay;
+}
+ipcMain.on("select-capture", async (_event, area) => {
+  const display = screen.getPrimaryDisplay();
+  const { bounds } = display;
+  const sources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize: { width: bounds.width, height: bounds.height }
+  });
+  if (sources.length > 0) {
+    const screenSource = sources[0];
+    const thumbnail = screenSource.thumbnail;
+    if (!thumbnail.isEmpty()) {
+      const croppedImage = thumbnail.crop(area);
+      overlayWindow$1 == null ? void 0 : overlayWindow$1.hide();
+      mainWindow$1 == null ? void 0 : mainWindow$1.show();
+      mainWindow$1 == null ? void 0 : mainWindow$1.webContents.send("captured-data", croppedImage.toDataURL());
+      clipboard.writeImage(croppedImage);
+      return;
+    }
+  }
+  throw new Error("No screen sources found.");
+});
 createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
@@ -50,49 +78,76 @@ const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win;
-function createWindow() {
-  win = new BrowserWindow({
+let mainWindow = null;
+let overlayWindow = null;
+function createWindows() {
+  mainWindow = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs")
-    }
+    },
+    show: true,
+    resizable: false
+  });
+  overlayWindow = new BrowserWindow({
+    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.mjs")
+    },
     // transparent:true,
-    // frame:false,
+    // frame:false, //두개를 모두 설정해야 투명해진다.
     // fullscreen: true,
     // alwaysOnTop: true,
     // skipTaskbar: true,
     // resizable : false
-  });
-  win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+    transparent: true,
+    // transparent:true 와 frame:false 를 모두 설정해야 투명해진다.
+    frame: false,
+    resizable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    show: false,
+    fullscreen: true
   });
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
+    mainWindow.loadURL(VITE_DEV_SERVER_URL);
+    overlayWindow.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
+    mainWindow.loadFile(path.join(RENDERER_DIST, "index.html"));
+    overlayWindow.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
+  setBrowserWindow(mainWindow, overlayWindow);
 }
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
-    win = null;
+    mainWindow = null;
+    overlayWindow = null;
   }
 });
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+    createWindows();
   }
 });
 app.whenReady().then(() => {
-  createWindow();
+  createWindows();
 });
 app.on("browser-window-focus", () => {
+  globalShortcut.register("Control+1", () => {
+    mainWindow == null ? void 0 : mainWindow.hide();
+    overlayWindow == null ? void 0 : overlayWindow.show();
+    overlayWindow == null ? void 0 : overlayWindow.webContents.send("capture-start");
+  });
+  globalShortcut.register("Escape", () => {
+    mainWindow == null ? void 0 : mainWindow.show();
+    overlayWindow == null ? void 0 : overlayWindow.hide();
+  });
   globalShortcut.register("Control+t", () => {
-    win == null ? void 0 : win.webContents.openDevTools();
+    mainWindow == null ? void 0 : mainWindow.webContents.openDevTools();
   });
   globalShortcut.register("Control+s", async () => {
-    win == null ? void 0 : win.webContents.send("get-image");
+    mainWindow == null ? void 0 : mainWindow.webContents.send("get-image");
   });
 });
 app.on("browser-window-blur", () => {
