@@ -33,6 +33,12 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
+    // transparent:true,
+    // frame:false,
+    // fullscreen: true,
+    // alwaysOnTop: true,
+    // skipTaskbar: true,
+    // resizable : false
   })
 
   // Test active push message to Renderer-process.

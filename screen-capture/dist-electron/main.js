@@ -57,6 +57,12 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs")
     }
+    // transparent:true,
+    // frame:false,
+    // fullscreen: true,
+    // alwaysOnTop: true,
+    // skipTaskbar: true,
+    // resizable : false
   });
   win.webContents.on("did-finish-load", () => {
     win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
