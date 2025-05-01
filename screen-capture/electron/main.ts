@@ -76,6 +76,7 @@ function createWindows() {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  //맥인 경우 수정을 좀 해야 한다
   if (process.platform !== 'darwin') {
     app.quit()
     mainWindow = null
